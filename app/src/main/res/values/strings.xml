@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">PullToRefresh</string>
+    <string name="item">"Item "</string>
+</resources>
