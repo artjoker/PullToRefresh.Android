@@ -431,10 +431,10 @@ public class PullToRefreshView extends ViewGroup implements NestedScrollingParen
         int childHeight = childImageView.getMeasuredHeight();
         final int width = getMeasuredWidth();
         int left = width / 2 - childWidth / 2;
-        int top = mCurrentTargetOffsetTop - refreshingHeight;
+        int top = 0 - refreshingHeight;
         int right = width / 2 + childWidth / 2;
 
-        childImageView.layout(left, top, right, top + childHeight);
+        childImageView.layout(left, top, right, top + childHeight + mCurrentTargetOffsetTop);
     }
 
     private void onLayoutTargetView(View child, int mCurrentTargetOffsetTop) {
@@ -525,7 +525,6 @@ public class PullToRefreshView extends ViewGroup implements NestedScrollingParen
             // Fail fast if we're not in a state where a swipe is possible
             return false;
         }
-
         switch (action) {
             case MotionEvent.ACTION_DOWN:
                 setTargetOffsetTopAndBottom(mOriginalOffsetTop - childImageView.getTop(), true);
@@ -610,7 +609,7 @@ public class PullToRefreshView extends ViewGroup implements NestedScrollingParen
                 mTotalUnconsumed -= dy;
                 consumed[1] = dy;
             }
-            moveSpinner(mTotalUnconsumed);
+            moveRefreshView(mTotalUnconsumed);
         }
 
         // If a client layout is using a custom start position for the circle
@@ -664,7 +663,7 @@ public class PullToRefreshView extends ViewGroup implements NestedScrollingParen
         final int dy = dyUnconsumed + mParentOffsetInWindow[1];
         if (dy < 0 && !canChildScrollUp()) {
             mTotalUnconsumed += Math.abs(dy);
-            moveSpinner(mTotalUnconsumed);
+            moveRefreshView(mTotalUnconsumed);
         }
     }
 
@@ -734,8 +733,7 @@ public class PullToRefreshView extends ViewGroup implements NestedScrollingParen
         return animation != null && animation.hasStarted() && !animation.hasEnded();
     }
 
-    private void moveSpinner(float overscrollTop) {
-
+    private void moveRefreshView(float overscrollTop) {
         float originalDragPercent = overscrollTop / mTotalDragDistance;
 
         float dragPercent = Math.min(1f, Math.abs(originalDragPercent));
@@ -754,33 +752,10 @@ public class PullToRefreshView extends ViewGroup implements NestedScrollingParen
         if (childImageView.getVisibility() != View.VISIBLE) {
             childImageView.setVisibility(View.VISIBLE);
         }
-        if (!mScale) {
-            ViewCompat.setScaleX(childImageView, 1f);
-            ViewCompat.setScaleY(childImageView, 1f);
-        }
 
-        if (mScale) {
-            setAnimationProgress(Math.min(1f, overscrollTop / mTotalDragDistance));
-        }
-        if (overscrollTop < mTotalDragDistance) {
-        /*    if (mProgress.getAlpha() > STARTING_PROGRESS_ALPHA
-                    && !isAnimationRunning(mAlphaStartAnimation)) {
-                // Animate the alpha
-                startProgressAlphaStartAnimation();
-            }*/
-        } else {
-          /*  if (mProgress.getAlpha() < MAX_ALPHA && !isAnimationRunning(mAlphaMaxAnimation)) {
-                // Animate the alpha
-                startProgressAlphaMaxAnimation();
-            }*/
-        }
-        float strokeStart = adjustedPercent * .8f;
-        //  mProgress.setStartEndTrim(0f, Math.min(MAX_PROGRESS_ANGLE, strokeStart));
-        //   mProgress.setArrowScale(Math.min(1f, adjustedPercent));
 
-        float rotation = (-0.25f + .4f * adjustedPercent + tensionPercent * 2) * .5f;
-        //    mProgress.setProgressRotation(rotation);
-        setTargetOffsetTopAndBottom(targetY - mCurrentTargetOffsetTop, true /* requires update */);
+        int offset = targetY - mCurrentTargetOffsetTop;
+        setTargetOffsetTopAndBottom( offset, true /* requires update */);
     }
 
     private void finishSpinner(float overscrollTop) {
@@ -850,7 +825,7 @@ public class PullToRefreshView extends ViewGroup implements NestedScrollingParen
                 if (mIsBeingDragged) {
                     final float overscrollTop = (y - mInitialMotionY) * Constants.DRAG_RATE;
                     if (overscrollTop > 0) {
-                        moveSpinner(overscrollTop);
+                        moveRefreshView(overscrollTop);
                     } else {
                         return false;
                     }
@@ -991,6 +966,7 @@ public class PullToRefreshView extends ViewGroup implements NestedScrollingParen
     private void setTargetOffsetTopAndBottom(int offset, boolean requiresUpdate) {
 
         childImageView.bringToFront();
+
         ViewCompat.offsetTopAndBottom(childImageView, offset);
         if (mTarget != null) {
             mTarget.offsetTopAndBottom(offset);
