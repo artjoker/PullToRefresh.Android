@@ -21,7 +21,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:paddingLeft="@dimen/adapter_item_padding"
-                android:paddingRight="@dimen/adapter_item_padding"></android.support.v7.widget.RecyclerView>
+                android:paddingRight="@dimen/adapter_item_padding"
+                android:paddingTop="@dimen/adapter_item_padding"></android.support.v7.widget.RecyclerView>
         </android.support.design.widget.CoordinatorLayout>
     </com.artjoker.alexsinyaev.pulltorefresh.PullToRefreshView>
 
