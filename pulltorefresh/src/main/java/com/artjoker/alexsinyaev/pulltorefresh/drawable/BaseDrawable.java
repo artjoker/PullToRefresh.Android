@@ -132,6 +132,6 @@ public class BaseDrawable extends Drawable {
         if (percent > 1)
             percent = 1;
         this.percent = percent;
-        Log.e("!!!", "setCurrentOffsetTopInPercent: " + percent);
+      //  Log.e("!!!", "setCurrentOffsetTopInPercent: " + percent);
     }
 }

@@ -78,19 +78,6 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
         ViewCompat.setChildrenDrawingOrderEnabled(this, true);
     }
 
-/*
-    public void setRefreshStyle(int type) {
-        setRefreshing(false);
-        switch (type) {
-            case STYLE_SUN:
-                mBaseRefreshView = new SunRefreshView(getContext(), this);
-                break;
-            default:
-                throw new InvalidParameterException("Type does not exist");
-        }
-        mRefreshView.setImageDrawable(mBaseRefreshView);
-    }
-*/
 
     /**
      * This method sets padding for the refresh (progress) view.
@@ -377,7 +364,7 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
     }
 
     private float getMotionEventY(MotionEvent ev, int activePointerId) {
-        final int index = MotionEventCompat.findPointerIndex(ev, activePointerId);
+        final int index = ev.findPointerIndex( activePointerId);
         if (index < 0) {
             return -1;
         }
