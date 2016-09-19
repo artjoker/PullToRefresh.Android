@@ -20,6 +20,7 @@ import android.widget.AbsListView;
 import com.artjoker.alexsinyaev.pulltorefresh.drawable.BaseDrawable;
 import com.artjoker.alexsinyaev.pulltorefresh.utils.Constants;
 import com.artjoker.alexsinyaev.pulltorefresh.utils.MathUtils;
+import com.artjoker.alexsinyaev.pulltorefresh.utils.ViewSize;
 import com.artjoker.alexsinyaev.pulltorefresh.utils.ViewUtils;
 import com.artjoker.alexsinyaev.pulltorefresh.views.ChildImageView;
 
@@ -52,6 +53,7 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
     private int mTargetPaddingRight;
     private int mTargetPaddingLeft;
     private BaseDrawable animatedDrawable;
+    private ViewSize viewSize;
 
     public PullToRefreshView(Context context) {
         this(context, null);
@@ -70,18 +72,16 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
         mRefreshView = new ChildImageView(context);
 
         //setRefreshStyle(type);
-        animatedDrawable = new BaseDrawable(mRefreshView,this);
+        animatedDrawable = new BaseDrawable(mRefreshView, this);
         mRefreshView.setImageDrawable(animatedDrawable);
         addView(mRefreshView);
 
         setWillNotDraw(false);
         ViewCompat.setChildrenDrawingOrderEnabled(this, true);
+        viewSize = new ViewSize();
     }
 
 
-    /**
-     * This method sets padding for the refresh (progress) view.
-     */
     public void setRefreshViewPadding(int left, int top, int right, int bottom) {
         mRefreshView.setPadding(left, top, right, bottom);
     }
@@ -124,7 +124,7 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
 
-        if (!isEnabled() || canChildScrollUp() || mRefreshing) {
+        if (!isEnabled() || ViewUtils.canChildScrollUp(mTarget) || mRefreshing) {
             return false;
         }
 
@@ -198,7 +198,7 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
             }
             case MotionEventCompat.ACTION_POINTER_DOWN:
                 final int index = MotionEventCompat.getActionIndex(ev);
-                mActivePointerId = ev.getPointerId( index);
+                mActivePointerId = ev.getPointerId(index);
                 break;
             case MotionEventCompat.ACTION_POINTER_UP:
                 onSecondaryPointerUp(ev);
@@ -364,7 +364,7 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
     }
 
     private float getMotionEventY(MotionEvent ev, int activePointerId) {
-        final int index = ev.findPointerIndex( activePointerId);
+        final int index = ev.findPointerIndex(activePointerId);
         if (index < 0) {
             return -1;
         }
@@ -380,20 +380,6 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
         }
     }
 
-    private boolean canChildScrollUp() {
-        if (android.os.Build.VERSION.SDK_INT < 14) {
-            if (mTarget instanceof AbsListView) {
-                final AbsListView absListView = (AbsListView) mTarget;
-                return absListView.getChildCount() > 0
-                        && (absListView.getFirstVisiblePosition() > 0 || absListView.getChildAt(0)
-                        .getTop() < absListView.getPaddingTop());
-            } else {
-                return mTarget.getScrollY() > 0;
-            }
-        } else {
-            return ViewCompat.canScrollVertically(mTarget, -1);
-        }
-    }
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
@@ -402,15 +388,35 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
         if (mTarget == null)
             return;
 
-        int height = getMeasuredHeight();
-        int width = getMeasuredWidth();
-        int left = getPaddingLeft();
-        int top = getPaddingTop();
-        int right = getPaddingRight();
-        int bottom = getPaddingBottom();
+        viewSize = layoutViewSize(viewSize);
+        onLayoutTarget(viewSize);
+        onLayoutRefreshView(viewSize);
+    }
 
-        mTarget.layout(left, top + mCurrentOffsetTop, left + width - right, top + height - bottom + mCurrentOffsetTop);
-        mRefreshView.layout(left, top, left + width - right, top + height - bottom);
+    private void onLayoutRefreshView(ViewSize viewSize) {
+        int refreshLeft = viewSize.getLeft();
+        int refreshTop = viewSize.getTop();
+        int refreshRight = viewSize.getLeft() + viewSize.getWidth() - viewSize.getRight();
+        int refreshBottom = viewSize.getTop() + viewSize.getHeight() - viewSize.getBottom();
+        mRefreshView.layout(refreshLeft, refreshTop, refreshRight, refreshBottom);
+    }
+
+    private void onLayoutTarget(ViewSize viewSize) {
+        int targetCurrentTop = viewSize.getTop() + mCurrentOffsetTop;
+        int targetRight = viewSize.getLeft() + viewSize.getWidth() - viewSize.getRight();
+        int targetCurrentBottom = viewSize.getTop() + viewSize.getHeight() - viewSize.getBottom() + mCurrentOffsetTop;
+        int targetLeft = viewSize.getLeft();
+        mTarget.layout(targetLeft, targetCurrentTop, targetRight, targetCurrentBottom);
+    }
+
+    private ViewSize layoutViewSize(ViewSize viewSize) {
+        viewSize.setHeight(getMeasuredHeight());
+        viewSize.setWidth(getMeasuredWidth());
+        viewSize.setLeft(getPaddingLeft());
+        viewSize.setTop(getPaddingTop());
+        viewSize.setRight(getPaddingRight());
+        viewSize.setBottom(getPaddingBottom());
+        return viewSize;
     }
 
     public void setOnRefreshListener(OnRefreshListener listener) {
