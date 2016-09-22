@@ -10,7 +10,7 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.Drawable;
-import android.util.Log;
+import android.support.annotation.NonNull;
 import android.view.View;
 
 import com.artjoker.alexsinyaev.pulltorefresh.PullToRefreshView;
@@ -24,6 +24,8 @@ import com.artjoker.alexsinyaev.pulltorefresh.views.ChildImageView;
  */
 public class BaseDrawable extends Drawable {
 
+    public static final int BACKGROUND_SPEED = -4;
+    public static final int ROTATE_WHEEL_SPEED = 4;
     private float percent;
     private ChildImageView container;
     private PullToRefreshView pullToRefreshView;
@@ -31,9 +33,16 @@ public class BaseDrawable extends Drawable {
     private final int backgroundMaxSize;
     private final Paint paint;
     private int width;
-    private Bitmap backBitmap;
-    private Bitmap sunBitmap;
-    private float sunRotateDegree = 0;
+    private Bitmap backBitmapFirst;
+    // private Bitmap sunBitmap;
+    private float wheelRotateDegree = 0;
+    private Matrix matrix = new Matrix();
+    private int loopIndex = 1;
+    private Bitmap backBitmapSecond;
+    private Bitmap motoBitmap;
+    private Bitmap leftWheel;
+    private Bitmap rightWheel;
+
 
     public BaseDrawable(final ChildImageView container, PullToRefreshView pullToRefreshView) {
         super();
@@ -46,18 +55,33 @@ public class BaseDrawable extends Drawable {
         paint.setColor(Color.BLUE);
         initSize(container);
 
-        // paint.setStrokeWidth();
 
     }
 
     private void initBitmap() {
         final BitmapFactory.Options options = new BitmapFactory.Options();
         options.inPreferredConfig = Bitmap.Config.RGB_565;
-        backBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.back, options);
-        backBitmap = Bitmap.createScaledBitmap(backBitmap, width, backgroundMaxSize, true);
+        backBitmapFirst = BitmapFactory.decodeResource(context.getResources(), R.drawable.background, options);
+        int height = backBitmapFirst.getHeight();
 
-        sunBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.sun, options);
-        sunBitmap = Bitmap.createScaledBitmap(sunBitmap, width / 4, width / 4, true);
+        float heightScaleFactor = (float) height / (float) backgroundMaxSize;
+        int backWidth = (int) (backBitmapFirst.getWidth() / heightScaleFactor);
+        backBitmapFirst = Bitmap.createScaledBitmap(backBitmapFirst, backWidth, backgroundMaxSize, true);
+        backBitmapSecond = Bitmap.createBitmap(backBitmapFirst);
+
+        motoBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.moto, options);
+        int motoScale = 2;
+        int motoWidth = (int) (motoBitmap.getWidth() / (heightScaleFactor * motoScale));
+        int motoHeight = (int) (motoBitmap.getHeight() / (heightScaleFactor * motoScale));
+        motoBitmap = Bitmap.createScaledBitmap(motoBitmap, motoWidth, motoHeight, true);
+        Bitmap wheel = BitmapFactory.decodeResource(context.getResources(), R.drawable.wheel, options);
+
+        int wheelWidth = (int) (wheel.getWidth() / (heightScaleFactor * motoScale));
+        int wheelHeight = (int) (wheel.getHeight() / (heightScaleFactor * motoScale));
+        leftWheel = Bitmap.createScaledBitmap(wheel, wheelWidth, wheelHeight, true);
+        rightWheel = Bitmap.createBitmap(leftWheel);
+/*        sunBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.sun, options);
+        sunBitmap = Bitmap.createScaledBitmap(sunBitmap, width / 4, width / 4, true);*/
     }
 
     private void initSize(final View parent) {
@@ -71,46 +95,162 @@ public class BaseDrawable extends Drawable {
     }
 
     @Override
-    public void draw(Canvas canvas) {
+    public void draw(@NonNull Canvas canvas) {
 
         drawBackground(canvas);
+        drawMoto(canvas);
+        // drawSun(canvas);
+        if (percent > 0.1) {
+            invalidateSelf();
+        }
+    }
+
+    private void drawMoto(Canvas canvas) {
+        matrix.reset();
+        float offsetX = width / 2 - motoBitmap.getWidth() / 2;
+        float bottomOffset = backgroundMaxSize / 5 + motoBitmap.getHeight();
+        if (percent < 1) {
+            float offsetY = percent * pullToRefreshView.getTotalDragDistance() - (backgroundMaxSize * (1 - percent) + bottomOffset);
+            matrix.postTranslate(offsetX, offsetY);
+            float scale = getScale(percent);
+            matrix.postScale(scale, scale);
+            canvas.drawBitmap(motoBitmap, matrix, null);
+            scaleLeftWheel(canvas, bottomOffset, offsetY, scale);
+            scaleRightWheel(canvas, bottomOffset, offsetY, scale);
+
+        } else {
+            float offsetY = getDragOffsetY(bottomOffset);
+            matrix.postTranslate(offsetX, offsetY);
+            canvas.drawBitmap(motoBitmap, matrix, null);
+
+            float bottomWheelOffset = getWheelBottomOffset(bottomOffset);
+            drawLeftWheel(canvas, bottomWheelOffset);
+            drawRightWheel(canvas, bottomWheelOffset);
+
+        }
 
 
-        Matrix matrix = new Matrix();
+    }
+
+    private void scaleRightWheel(Canvas canvas, float bottomOffset, float offsetY, float scale) {
+        matrix.reset();
+        int offsetXRightWheel = getRightWheelOffset();
+        matrix.postTranslate(offsetXRightWheel, offsetY + getWheelBottomOffset(bottomOffset));
+        matrix.postScale(scale, scale);
+        canvas.drawBitmap(rightWheel, matrix, null);
+    }
+
+    private void scaleLeftWheel(Canvas canvas, float bottomOffset, float offsetY, float scale) {
+        matrix.reset();
+        int offsetXleftWheel = getLeftWheelOffset();
+        matrix.postTranslate(offsetXleftWheel, offsetY + getWheelBottomOffset(bottomOffset));
+        matrix.postScale(scale, scale);
+        canvas.drawBitmap(leftWheel, matrix, null);
+    }
+
+    private float getWheelBottomOffset(float bottomOffset) {
+        return bottomOffset - motoBitmap.getHeight() + leftWheel.getHeight() / 2;
+    }
+
+    private int getLeftWheelOffset() {
+        return width / 2 - (int) (motoBitmap.getWidth() / 2.5);
+    }
+
+    private void drawRightWheel(Canvas canvas, float bottomWheelOffset) {
+        matrix.reset();
+        int offsetX = getRightWheelOffset();
+        float offsetY = getDragOffsetY(bottomWheelOffset);
+        matrix.postTranslate(offsetX, offsetY);
+        float px = offsetX + leftWheel.getWidth() / 2;
+        float py = offsetY + leftWheel.getHeight() / 2;
+        matrix.postRotate(wheelRotateDegree, px, py);
+        canvas.drawBitmap(rightWheel, matrix, null);
+    }
+
+    private int getRightWheelOffset() {
+        return width / 2 + (int) (motoBitmap.getWidth() / 3.5);
+    }
+
+    private void drawLeftWheel(Canvas canvas, float bottomWheelOffset) {
+        matrix.reset();
+        int offsetX = getLeftWheelOffset();
+        float offsetY = getDragOffsetY(bottomWheelOffset);
+        matrix.postTranslate(offsetX, offsetY);
+        wheelRotateDegree = wheelRotateDegree + ROTATE_WHEEL_SPEED;
+        float px = offsetX + leftWheel.getWidth() / 2;
+        float py = offsetY + leftWheel.getHeight() / 2;
+        matrix.postRotate(wheelRotateDegree, px, py);
+        canvas.drawBitmap(leftWheel, matrix, null);
+    }
+
+    private float getDragOffsetY(float bottomOffset) {
+        int dragOffset = (int) (Math.sin(loopIndex % 15) * 2);
+        return backgroundMaxSize - bottomOffset - dragOffset;
+    }
+
+    private float getScale(float percent) {
+        return 0.8f + 0.2f * percent;
+    }
+
+/*    private void drawSun(Canvas canvas) {
         matrix.reset();
         float dragPercent = percent;
         float offsetX = width - width / 4;
         float offsetY = dragPercent * pullToRefreshView.getTotalDragDistance() - backgroundMaxSize;
         matrix.postTranslate(offsetX, offsetY);
 
-
-        float scale = 0.8f + 0.2f * percent;
-        //  matrix.postScale(scale, scale);
-        sunRotateDegree = sunRotateDegree + 2;
+        wheelRotateDegree = wheelRotateDegree + 2;
         float px = offsetX + sunBitmap.getWidth() / 2;
         float py = offsetY + sunBitmap.getHeight() / 2;
-        //matrix.postTranslate(-sunBitmap.getWidth() / 2, -sunBitmap.getHeight() / 2);
-        matrix.postRotate(sunRotateDegree, px, py);
-        // matrix.postTranslate(px, py);
+        matrix.postRotate(wheelRotateDegree, px, py);
         canvas.drawBitmap(sunBitmap, matrix, null);
-        if (percent > 0.1) {
-            invalidateSelf();
-        }
-    }
+    }*/
 
     private void drawBackground(Canvas canvas) {
-        Matrix matrix = new Matrix();
+
         matrix.reset();
         float dragPercent = percent;
+        if (dragPercent < 1) {
+            loopIndex = 1;
+            scaleBackground(canvas, dragPercent);
+        } else {
+            int backSpeed = BACKGROUND_SPEED;
+            loopBackground(canvas, backSpeed);
+        }
+
+
+        loopIndex++;
+    }
+
+    private void loopBackground(Canvas canvas, int backSpeed) {
+        int backXoffset = backSpeed * loopIndex;
+
+        int dxFirstBack = backXoffset;
+        int twoBackWidth = backBitmapFirst.getWidth() + backBitmapSecond.getWidth();
+        if (Math.abs(dxFirstBack) >= Math.abs(twoBackWidth - width)) {
+            dxFirstBack = backXoffset + twoBackWidth;
+            if (Math.abs(backXoffset) >= Math.abs(twoBackWidth)) {
+                backXoffset = 0;
+                loopIndex = 1;
+            }
+        }
+
+        matrix.postTranslate(dxFirstBack, 0);
+        canvas.drawBitmap(backBitmapFirst, matrix, null);
+
+        matrix.reset();
+        int dxSecondBack = backXoffset + backBitmapFirst.getWidth();
+        matrix.postTranslate(dxSecondBack, 0);
+        canvas.drawBitmap(backBitmapSecond, matrix, null);
+    }
+
+    private void scaleBackground(Canvas canvas, float dragPercent) {
         float offsetX = 0;
         float offsetY = dragPercent * pullToRefreshView.getTotalDragDistance() - backgroundMaxSize;
         matrix.postTranslate(offsetX, offsetY);
-
-
-        float scale = 0.8f + 0.2f * percent;
+        float scale = getScale(percent);
         matrix.postScale(scale, scale);
-
-        canvas.drawBitmap(backBitmap, matrix, null);
+        canvas.drawBitmap(backBitmapFirst, matrix, null);
     }
 
     @Override
@@ -132,6 +272,6 @@ public class BaseDrawable extends Drawable {
         if (percent > 1)
             percent = 1;
         this.percent = percent;
-      //  Log.e("!!!", "setCurrentOffsetTopInPercent: " + percent);
+
     }
 }

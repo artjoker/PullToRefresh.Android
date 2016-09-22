@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
                         });
 
                     }
-                }, 5000);
+                }, 20000);
             }
         });
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
