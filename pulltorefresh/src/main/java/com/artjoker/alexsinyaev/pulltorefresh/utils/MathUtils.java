@@ -4,7 +4,7 @@ import android.support.annotation.NonNull;
 import android.view.MotionEvent;
 
 /**
- * Created by dev on 16.09.16.
+ * Created by Alex Sinyaev  on 16.09.16.
  */
 public class MathUtils {
 

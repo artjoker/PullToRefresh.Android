@@ -1,7 +1,7 @@
 package com.artjoker.alexsinyaev.pulltorefresh.utils;
 
 /**
- * Created by dev on 19.09.16.
+ * Created by Alex Sinyaev  on 19.09.16.
  */
 public class ViewSize {
     public ViewSize() {

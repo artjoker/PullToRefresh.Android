@@ -1,38 +1,39 @@
 package com.artjoker.alexsinyaev.pulltorefresh;
 
 import android.content.Context;
+import android.graphics.Point;
 import android.support.annotation.NonNull;
 import android.support.v4.view.MotionEventCompat;
-import android.support.v4.view.NestedScrollingChild;
-import android.support.v4.view.NestedScrollingParent;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
+import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.view.animation.Transformation;
-import android.widget.AbsListView;
+import android.widget.ImageView;
 
 import com.artjoker.alexsinyaev.pulltorefresh.drawable.BaseDrawable;
 import com.artjoker.alexsinyaev.pulltorefresh.utils.Constants;
 import com.artjoker.alexsinyaev.pulltorefresh.utils.MathUtils;
 import com.artjoker.alexsinyaev.pulltorefresh.utils.ViewSize;
 import com.artjoker.alexsinyaev.pulltorefresh.utils.ViewUtils;
-import com.artjoker.alexsinyaev.pulltorefresh.views.ChildImageView;
+
 
 /**
  * Created by dev on 13.09.16.
  */
-public class PullToRefreshView extends ViewGroup /*implements NestedScrollingParent,
-        NestedScrollingChild*/ {
+public class PullToRefreshView extends ViewGroup  {
 
 
+    private static int DRAG_MAX_DISTANCE;
     private View mTarget;
-    private ChildImageView mRefreshView;
+    private ImageView mRefreshView;
     private Interpolator mDecelerateInterpolator;
     private int mTouchSlop;
     private int mTotalDragDistance;
@@ -61,18 +62,21 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
 
     public PullToRefreshView(Context context, AttributeSet attrs) {
         super(context, attrs);
-       /* TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.RefreshView);
-        final int type = a.getInteger(R.styleable.RefreshView_type, STYLE_SUN);*/
-        //a.recycle();
-
         mDecelerateInterpolator = new DecelerateInterpolator(Constants.DECELERATE_INTERPOLATION_FACTOR);
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
-        mTotalDragDistance = ViewUtils.convertDpToPx(context, Constants.DRAG_MAX_DISTANCE);
 
-        mRefreshView = new ChildImageView(context);
+        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        Display display = wm.getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        int height = size.y;
+        DRAG_MAX_DISTANCE = height / 4;
+        mTotalDragDistance = DRAG_MAX_DISTANCE;
 
-        //setRefreshStyle(type);
-        animatedDrawable = new BaseDrawable(mRefreshView, this);
+        mRefreshView = new ImageView(context);
+
+
+        animatedDrawable = new BaseDrawable(mRefreshView, this, DRAG_MAX_DISTANCE);
         mRefreshView.setImageDrawable(animatedDrawable);
         addView(mRefreshView);
 
@@ -82,9 +86,7 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
     }
 
 
-    public void setRefreshViewPadding(int left, int top, int right, int bottom) {
-        mRefreshView.setPadding(left, top, right, bottom);
-    }
+
 
     public int getTotalDragDistance() {
         return mTotalDragDistance;
@@ -265,14 +267,14 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
         mRefreshView.startAnimation(mAnimateToCorrectPosition);
 
         if (mRefreshing) {
-            //   mBaseRefreshView.start();
+
             if (mNotify) {
                 if (mListener != null) {
                     mListener.onRefresh();
                 }
             }
         } else {
-            //   mBaseRefreshView.stop();
+
             animateOffsetToStartPosition();
         }
         mCurrentOffsetTop = mTarget.getTop();
@@ -317,7 +319,7 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
 
     public void setRefreshing(boolean refreshing) {
         if (mRefreshing != refreshing) {
-            setRefreshing(refreshing, false /* notify */);
+            setRefreshing(refreshing, false );
         }
     }
 
@@ -349,7 +351,7 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
 
         @Override
         public void onAnimationEnd(Animation animation) {
-            //   mBaseRefreshView.stop();
+
             mCurrentOffsetTop = mTarget.getTop();
         }
     };
@@ -373,7 +375,7 @@ public class PullToRefreshView extends ViewGroup /*implements NestedScrollingPar
 
     private void setTargetOffsetTop(int offset, boolean requiresUpdate) {
         mTarget.offsetTopAndBottom(offset);
-        //  mBaseRefreshView.offsetTopAndBottom(offset);
+
         mCurrentOffsetTop = mTarget.getTop();
         if (requiresUpdate && android.os.Build.VERSION.SDK_INT < 11) {
             invalidate();

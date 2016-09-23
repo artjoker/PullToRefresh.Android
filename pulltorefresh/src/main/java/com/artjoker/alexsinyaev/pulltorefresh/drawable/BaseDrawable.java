@@ -4,32 +4,27 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.NonNull;
-import android.util.Log;
 import android.view.View;
-import android.view.animation.Animation;
+import android.widget.ImageView;
 
 import com.artjoker.alexsinyaev.pulltorefresh.PullToRefreshView;
 import com.artjoker.alexsinyaev.pulltorefresh.R;
-import com.artjoker.alexsinyaev.pulltorefresh.utils.Constants;
-import com.artjoker.alexsinyaev.pulltorefresh.utils.ViewUtils;
-import com.artjoker.alexsinyaev.pulltorefresh.views.ChildImageView;
 
 /**
- * Created by dev on 15.09.16.
+ * Created by Alex Sinyaev on 15.09.16.
  */
 public class BaseDrawable extends Drawable {
 
     public static final int BACKGROUND_SPEED = -4;
     public static final int ROTATE_WHEEL_SPEED = 4;
     private float percent;
-    private ChildImageView container;
+    private ImageView container;
     private PullToRefreshView pullToRefreshView;
     private final Context context;
     private final int backgroundMaxSize;
@@ -37,7 +32,7 @@ public class BaseDrawable extends Drawable {
     private final Paint fadePaint;
     private int width;
     private Bitmap backBitmapFirst;
-    // private Bitmap sunBitmap;
+
     private float wheelRotateDegree = 0;
     private Matrix matrix = new Matrix();
     private int loopIndex = 1;
@@ -46,15 +41,16 @@ public class BaseDrawable extends Drawable {
     private Bitmap leftWheel;
     private Bitmap rightWheel;
     private Bitmap lightBitmap;
+    private Bitmap moonBitmap;
 
 
-    public BaseDrawable(final ChildImageView container, PullToRefreshView pullToRefreshView) {
+    public BaseDrawable(final ImageView container, PullToRefreshView pullToRefreshView, int dragMaxDistance) {
         super();
         this.container = container;
 
         this.pullToRefreshView = pullToRefreshView;
         context = container.getContext();
-        backgroundMaxSize = ViewUtils.convertDpToPx(context, Constants.DRAG_MAX_DISTANCE);
+        backgroundMaxSize = dragMaxDistance;
         paint = new Paint();
         paint.setStyle(Paint.Style.FILL);
 
@@ -69,6 +65,7 @@ public class BaseDrawable extends Drawable {
     private void initBitmap() {
         final BitmapFactory.Options options = new BitmapFactory.Options();
         options.inPreferredConfig = Bitmap.Config.RGB_565;
+
         backBitmapFirst = BitmapFactory.decodeResource(context.getResources(), R.drawable.background, options);
         int height = backBitmapFirst.getHeight();
 
@@ -76,25 +73,50 @@ public class BaseDrawable extends Drawable {
         int backWidth = (int) (backBitmapFirst.getWidth() / heightScaleFactor);
         backBitmapFirst = Bitmap.createScaledBitmap(backBitmapFirst, backWidth, backgroundMaxSize, true);
         backBitmapSecond = Bitmap.createBitmap(backBitmapFirst);
+        int scaleFactor = 2;
+        loadMoto(options, heightScaleFactor, scaleFactor);
+        loadWheels(options, heightScaleFactor, scaleFactor);
+        loadLight(options, heightScaleFactor, scaleFactor);
+        loadMoon(options, heightScaleFactor, scaleFactor);
+    }
 
-        motoBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.moto, options);
-        int motoScale = 2;
-        int motoWidth = (int) (motoBitmap.getWidth() / (heightScaleFactor * motoScale));
-        int motoHeight = (int) (motoBitmap.getHeight() / (heightScaleFactor * motoScale));
-        motoBitmap = Bitmap.createScaledBitmap(motoBitmap, motoWidth, motoHeight, true);
+    private void loadMoon(BitmapFactory.Options options, float heightScaleFactor, float scaleFactor) {
+        moonBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.moon, options);
+        int moonWidth = getBitmapWidth(heightScaleFactor, scaleFactor, moonBitmap);
+        int moonHeight = getBitmapHeight(heightScaleFactor, scaleFactor, moonBitmap);
+        moonBitmap = Bitmap.createScaledBitmap(moonBitmap, moonWidth, moonHeight, true);
+    }
+
+    private void loadLight(BitmapFactory.Options options, float heightScaleFactor, float scaleFactor) {
+        lightBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.light, options);
+        int lightWidth = getBitmapWidth(heightScaleFactor, scaleFactor, lightBitmap);
+        int lightHeight = getBitmapHeight(heightScaleFactor, scaleFactor, lightBitmap);
+        lightBitmap = Bitmap.createScaledBitmap(this.lightBitmap, lightWidth, lightHeight, true);
+    }
+
+
+    private void loadWheels(BitmapFactory.Options options, float heightScaleFactor, float motoScale) {
         Bitmap wheel = BitmapFactory.decodeResource(context.getResources(), R.drawable.wheel, options);
-
-        int wheelWidth = (int) (wheel.getWidth() / (heightScaleFactor * motoScale));
-        int wheelHeight = (int) (wheel.getHeight() / (heightScaleFactor * motoScale));
+        int wheelWidth = getBitmapWidth(heightScaleFactor, motoScale, wheel);
+        int wheelHeight = getBitmapHeight(heightScaleFactor, motoScale, wheel);
         leftWheel = Bitmap.createScaledBitmap(wheel, wheelWidth, wheelHeight, true);
         rightWheel = Bitmap.createBitmap(leftWheel);
+    }
 
-        lightBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.light, options);
+    private void loadMoto(BitmapFactory.Options options, float heightScaleFactor, int motoScale) {
+        motoBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.moto, options);
+        int motoWidth = getBitmapWidth(heightScaleFactor, motoScale, motoBitmap);
+        int motoHeight = getBitmapHeight(heightScaleFactor, motoScale, motoBitmap);
+        motoBitmap = Bitmap.createScaledBitmap(motoBitmap, motoWidth, motoHeight, true);
 
-        int lightWidth = (int) (lightBitmap.getWidth() / (heightScaleFactor * motoScale));
-        int lightHeight = (int) (lightBitmap.getHeight() / (heightScaleFactor * motoScale));
-        lightBitmap = Bitmap.createScaledBitmap(lightBitmap, lightWidth, lightHeight, true);
+    }
 
+    private int getBitmapHeight(float heightScaleFactor, float scaleFactor, Bitmap lightBitmap) {
+        return (int) (lightBitmap.getHeight() / (heightScaleFactor * scaleFactor));
+    }
+
+    private int getBitmapWidth(float heightScaleFactor, float scaleFactor, Bitmap lightBitmap) {
+        return (int) (lightBitmap.getWidth() / (heightScaleFactor * scaleFactor));
     }
 
     private void initSize(final View parent) {
@@ -112,7 +134,11 @@ public class BaseDrawable extends Drawable {
 
         drawBackground(canvas);
         drawMoto(canvas);
-
+/*        if (percent == 1) {
+            matrix.reset();
+            matrix.postTranslate(width - width / 10, backgroundMaxSize / 10);
+            canvas.drawBitmap(moonBitmap, matrix, paint);
+        }*/
         if (percent > 0.1) {
             invalidateSelf();
         }
@@ -141,23 +167,26 @@ public class BaseDrawable extends Drawable {
             drawLeftWheel(canvas, bottomWheelOffset);
             drawRightWheel(canvas, bottomWheelOffset);
 
-            matrix.reset();
-            float dx = width / 2 + (int) (motoBitmap.getWidth() / 3);
-            float dy = bottomOffset + motoBitmap.getHeight() / 5;
-            matrix.postTranslate(dx, dy);
-            float speedFactor = 1800;
-            float arg = (loopIndex / speedFactor) % 90;
-            double sin = Math.cos(Math.toDegrees(arg));
-
-            int minAlpha = 120;
-            int alpha = (int) (Math.abs(sin) * 255) + minAlpha;
-            Log.e("!!!", "drawMoto: " + alpha);
-            fadePaint.setAlpha(alpha);
-            canvas.drawBitmap(lightBitmap, matrix, fadePaint);
+            drawLight(canvas, bottomOffset);
 
         }
 
 
+    }
+
+    private void drawLight(Canvas canvas, float bottomOffset) {
+        matrix.reset();
+        float dx = width / 2 + (int) (motoBitmap.getWidth() / 3);
+        float dy = bottomOffset + motoBitmap.getHeight() / 5;
+        matrix.postTranslate(dx, dy);
+        float speedFactor = 1800;
+        float arg = (loopIndex / speedFactor) % 90;
+        double sin = Math.cos(Math.toDegrees(arg));
+
+        int minAlpha = 180;
+        int alpha = (int) (Math.abs(sin) * 255) + minAlpha;
+        fadePaint.setAlpha(alpha);
+        canvas.drawBitmap(lightBitmap, matrix, fadePaint);
     }
 
     private void scaleRightWheel(Canvas canvas, float bottomOffset, float offsetY, float scale) {
